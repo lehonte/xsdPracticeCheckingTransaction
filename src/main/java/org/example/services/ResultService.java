@@ -1,5 +1,6 @@
 package org.example.services;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -37,10 +38,12 @@ public class ResultService {
                 kafkaTemplate.send(topic, event).get(); //get, чтобы ожидать подтверждения, что событие отправилось
                 outboxEvent.setSent(true);
                 outboxEventRepository.save(outboxEvent);
-            } catch (Exception e) {
+            } catch (JsonProcessingException e) {
                 log.error("Проблемы при формировании события {}", outboxEvent.getKey(), e);
                 outboxEvent.setSent(true);
                 outboxEventRepository.save(outboxEvent);
+            } catch (Exception e) {
+                log.error("Проблемы при отправлении события {}", outboxEvent.getKey(), e);
             }
         }
     }

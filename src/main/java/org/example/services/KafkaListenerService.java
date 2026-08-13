@@ -9,7 +9,6 @@ import org.example.eventEntities.ProducessedTransactions;
 import org.example.enums.TransactionStatus;
 import org.example.events.ResultOfChekingEvent;
 import org.example.events.StrangeTransactionEvent;
-import org.example.exceptions.AlreadyProdussedRequestException;
 import org.example.repositories.OutboxEventRepository;
 import org.example.repositories.ProducessedRequestsRepository;
 import org.springframework.kafka.annotation.KafkaListener;
