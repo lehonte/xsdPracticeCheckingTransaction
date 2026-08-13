@@ -13,7 +13,7 @@ import org.example.repositories.OutboxEventRepository;
 import org.example.repositories.ProducessedRequestsRepository;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @Service
 @RequiredArgsConstructor
@@ -22,13 +22,19 @@ public class KafkaListenerService {
 
     private final CheckingService checkingService;
     private final ProducessedRequestsRepository producessedRequestsRepository;
-    private final ObjectMapper jacksonObjectMapper;
     private final OutboxEventRepository outboxEventRepository;
+    private final ObjectMapper objectMapper;
+    private final TransactionTemplate transactionTemplate;
 
-    @Transactional
     @KafkaListener(topics = "strange_transaction_topic")
-    public void checkTransaction(StrangeTransactionEvent event) {
+    public void liseningKafkaStrangeTransactions(StrangeTransactionEvent event) {
+        transactionTemplate.executeWithoutResult(status -> {
+            checkTransaction(event);
+        }); //это мы, чтобы не создавать отдельный бин для транзакции, обворачиваем метод который должен быть транзакцией
+    }//в транзакцию и вызываем из слушателя чтобы сначала закоммитилась бд (или откат) а потом только офсет
+    //иначе бд комитится после выхода из метода когда офсет уже отправлен и откат тогда будет для бд, а для кафки нет (для нее сообщение уже просмотрено и не отправится)
 
+    public void checkTransaction(StrangeTransactionEvent event) {
         if (producessedRequestsRepository.existsByTransactionNumber(event.transactionNumber())) {
             log.info("Транзакцию {} уже взяли на обработку", event.transactionNumber());
             return;
@@ -40,7 +46,7 @@ public class KafkaListenerService {
         ResultOfChekingEvent resultEvent = new ResultOfChekingEvent(resultStatus, event.transactionNumber());
 
         try {
-            String json = jacksonObjectMapper.writeValueAsString(resultEvent);
+            String json = objectMapper.writeValueAsString(resultEvent);
 
             OutboxEvent outboxEvent = new OutboxEvent(
                     event.transactionNumber(),
@@ -54,3 +60,4 @@ public class KafkaListenerService {
         }
     }
 }
+
