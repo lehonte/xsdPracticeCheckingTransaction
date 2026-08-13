@@ -1,4 +1,5 @@
-CREATE TABLE producessed_requests(
-    request_id VARCHAR(36) PRIMARY KEY,
+CREATE TABLE producessed_transactions(
+    transaction_number VARCHAR(255) PRIMARY KEY,
     processed_at TIMESTAMP DEFAULT NOW()
 );
+--для дедупликации

@@ -1,4 +1,4 @@
-package org.example.entities;
+package org.example.eventEntities;
 
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -8,21 +8,21 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "producessd_requests")
+@Table(name = "producessed_transactions")
 @NoArgsConstructor
 @Getter
 @Setter
-public class ProducessedRequests {
+public class ProducessedTransactions {
 
     @Id
-    @Column(name = "request_id", length = 36)
-    private String requestId;
+    @Column(name = "transaction_number")
+    private String transactionNumber;
 
     @Column(name = "processed_at")
     private LocalDateTime processedAt;
 
-    public ProducessedRequests(String requestId) {
-        this.requestId = requestId;
+    public ProducessedTransactions(String transactionNumber) {
+        this.transactionNumber = transactionNumber;
         this.processedAt = LocalDateTime.now();
     }
 }
