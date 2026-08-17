@@ -13,7 +13,7 @@ public class KafkaCofig {
     public NewTopic resultOfChecking() {
         return TopicBuilder.name("result_of_checking")
                 .partitions(3)
-                .replicas(3)
+                .replicas(1)
                 .config(TopicConfig.RETENTION_MS_CONFIG, "86400000")
                 .config(TopicConfig.RETENTION_BYTES_CONFIG, "524288000")
                 .build();
