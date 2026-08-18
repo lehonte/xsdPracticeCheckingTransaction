@@ -36,6 +36,7 @@ public class ResultService {
                 ResultOfChekingEvent event = objectMapper.readValue(payload, ResultOfChekingEvent.class);
 
                 kafkaTemplate.send(topic, event).get(); //get, чтобы ожидать подтверждения, что событие отправилось
+                log.info("Транзакцию {} вернули с обработанным статусом", event.transactionNumber());
                 outboxEvent.setSent(true);
                 outboxEventRepository.save(outboxEvent);
             } catch (JsonProcessingException e) {

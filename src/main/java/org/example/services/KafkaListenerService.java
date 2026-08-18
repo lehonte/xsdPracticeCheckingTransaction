@@ -42,7 +42,9 @@ public class KafkaListenerService {
         // Если не существует — сохраняем факт начала обработки
         producessedRequestsRepository.save(new ProducessedTransactions(event.transactionNumber()));
 
+        log.info("Транзакцию {} получена на обработку", event.transactionNumber());
         TransactionStatus resultStatus = checkingService.checking(event.phoneNumber());
+        log.info("Транзакцию {} обработали", event.transactionNumber());
         ResultOfChekingEvent resultEvent = new ResultOfChekingEvent(resultStatus, event.transactionNumber());
 
         try {
@@ -54,6 +56,7 @@ public class KafkaListenerService {
                     json);
 
             outboxEventRepository.save(outboxEvent); //сохраняем в события, что нужно отправить
+            log.info("Транзакцию {} добавлена в очередь на отправку", event.transactionNumber());
 
         } catch (JsonProcessingException e) {
             throw new RuntimeException("Упала сериализация транзакции: " + event.transactionNumber(), e);
