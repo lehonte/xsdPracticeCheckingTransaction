@@ -8,7 +8,7 @@ import org.example.eventEntities.OutboxEvent;
 import org.example.eventEntities.ProducessedTransactions;
 import org.example.enums.TransactionStatus;
 import org.example.events.ResultOfChekingEvent;
-import org.example.events.StrangeTransactionEvent;
+import org.example.events.CheckTransactionEvent;
 import org.example.repositories.OutboxEventRepository;
 import org.example.repositories.ProducessedRequestsRepository;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -26,15 +26,15 @@ public class KafkaListenerService {
     private final ObjectMapper objectMapper;
     private final TransactionTemplate transactionTemplate;
 
-    @KafkaListener(topics = "strange_transaction_topic")
-    public void liseningKafkaStrangeTransactions(StrangeTransactionEvent event) {
+    @KafkaListener(topics = "check_transaction_topic")
+    public void liseningKafkaStrangeTransactions(CheckTransactionEvent event) {
         transactionTemplate.executeWithoutResult(status -> {
             checkTransaction(event);
         }); //это мы, чтобы не создавать отдельный бин для транзакции, обворачиваем метод который должен быть транзакцией
     }//в транзакцию и вызываем из слушателя чтобы сначала закоммитилась бд (или откат) а потом только офсет
     //иначе бд комитится после выхода из метода когда офсет уже отправлен и откат тогда будет для бд, а для кафки нет (для нее сообщение уже просмотрено и не отправится)
 
-    public void checkTransaction(StrangeTransactionEvent event) {
+    public void checkTransaction(CheckTransactionEvent event) {
         if (producessedRequestsRepository.existsByTransactionNumber(event.transactionNumber())) {
             log.info("Транзакцию {} уже взяли на обработку", event.transactionNumber());
             return;
