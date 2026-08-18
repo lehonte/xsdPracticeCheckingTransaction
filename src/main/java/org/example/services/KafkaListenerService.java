@@ -4,13 +4,14 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.example.enums.CheckingResult;
 import org.example.eventEntities.OutboxEvent;
 import org.example.eventEntities.ProducessedTransactions;
-import org.example.enums.TransactionStatus;
 import org.example.events.ResultOfChekingEvent;
-import org.example.events.StrangeTransactionEvent;
+import org.example.events.CheckTransactionEvent;
 import org.example.repositories.OutboxEventRepository;
 import org.example.repositories.ProducessedRequestsRepository;
+import org.example.utils.CheckingService;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -26,15 +27,15 @@ public class KafkaListenerService {
     private final ObjectMapper objectMapper;
     private final TransactionTemplate transactionTemplate;
 
-    @KafkaListener(topics = "strange_transaction_topic")
-    public void liseningKafkaStrangeTransactions(StrangeTransactionEvent event) {
+    @KafkaListener(topics = "check_transaction_topic")
+    public void liseningKafkaStrangeTransactions(CheckTransactionEvent event) {
         transactionTemplate.executeWithoutResult(status -> {
             checkTransaction(event);
         }); //это мы, чтобы не создавать отдельный бин для транзакции, обворачиваем метод который должен быть транзакцией
     }//в транзакцию и вызываем из слушателя чтобы сначала закоммитилась бд (или откат) а потом только офсет
     //иначе бд комитится после выхода из метода когда офсет уже отправлен и откат тогда будет для бд, а для кафки нет (для нее сообщение уже просмотрено и не отправится)
 
-    public void checkTransaction(StrangeTransactionEvent event) {
+    public void checkTransaction(CheckTransactionEvent event) {
         if (producessedRequestsRepository.existsByTransactionNumber(event.transactionNumber())) {
             log.info("Транзакцию {} уже взяли на обработку", event.transactionNumber());
             return;
@@ -43,9 +44,9 @@ public class KafkaListenerService {
         producessedRequestsRepository.save(new ProducessedTransactions(event.transactionNumber()));
 
         log.info("Транзакцию {} получена на обработку", event.transactionNumber());
-        TransactionStatus resultStatus = checkingService.checking(event.phoneNumber());
+        CheckingResult result = checkingService.checking(event.phoneNumber(), event.transactionNumber(), event.amount(), event.owner());
         log.info("Транзакцию {} обработали", event.transactionNumber());
-        ResultOfChekingEvent resultEvent = new ResultOfChekingEvent(resultStatus, event.transactionNumber());
+        ResultOfChekingEvent resultEvent = new ResultOfChekingEvent(result.status(), event.transactionNumber(), result.reason().getReason());
 
         try {
             String json = objectMapper.writeValueAsString(resultEvent);
