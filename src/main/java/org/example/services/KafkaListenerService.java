@@ -4,10 +4,10 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.example.dtoEvents.ResultOfChecking;
 import org.example.enums.CheckingResult;
 import org.example.eventEntities.OutboxEvent;
 import org.example.eventEntities.ProducessedTransactions;
-import org.example.events.ResultOfChekingEvent;
 import org.example.events.CheckTransactionEvent;
 import org.example.repositories.OutboxEventRepository;
 import org.example.repositories.ProducessedRequestsRepository;
@@ -15,6 +15,8 @@ import org.example.utils.CheckingService;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
+
+import java.math.BigDecimal;
 
 @Service
 @RequiredArgsConstructor
@@ -35,32 +37,40 @@ public class KafkaListenerService {
     }//в транзакцию и вызываем из слушателя чтобы сначала закоммитилась бд (или откат) а потом только офсет
     //иначе бд комитится после выхода из метода когда офсет уже отправлен и откат тогда будет для бд, а для кафки нет (для нее сообщение уже просмотрено и не отправится)
 
+
+
     public void checkTransaction(CheckTransactionEvent event) {
-        if (producessedRequestsRepository.existsByTransactionNumber(event.transactionNumber())) {
-            log.info("Транзакцию {} уже взяли на обработку", event.transactionNumber());
+
+        String phoneNumber = event.getPhoneNumber();
+        String transactionNumber = event.getTransactionNumber();
+        BigDecimal amount = event.getAmount();
+        String owner = event.getOwner();
+
+        if (producessedRequestsRepository.existsByTransactionNumber(transactionNumber)) {
+            log.info("Транзакцию {} уже взяли на обработку", transactionNumber);
             return;
         }
         // Если не существует — сохраняем факт начала обработки
-        producessedRequestsRepository.save(new ProducessedTransactions(event.transactionNumber()));
+        producessedRequestsRepository.save(new ProducessedTransactions(transactionNumber));
 
-        log.info("Транзакцию {} получена на обработку", event.transactionNumber());
-        CheckingResult result = checkingService.checking(event.phoneNumber(), event.transactionNumber(), event.amount(), event.owner());
-        log.info("Транзакцию {} обработали", event.transactionNumber());
-        ResultOfChekingEvent resultEvent = new ResultOfChekingEvent(result.status(), event.transactionNumber(), result.reason().getReason());
+        log.info("Транзакцию {} получена на обработку", transactionNumber);
+        CheckingResult result = checkingService.checking(phoneNumber, transactionNumber, amount, owner);
+        log.info("Транзакцию {} обработали", transactionNumber);
+        ResultOfChecking resultEvent = new ResultOfChecking(result.status(), transactionNumber, result.reason().getReason());
 
         try {
             String json = objectMapper.writeValueAsString(resultEvent);
 
             OutboxEvent outboxEvent = new OutboxEvent(
-                    event.transactionNumber(),
+                    transactionNumber,
                     "result_of_checking",
                     json);
 
             outboxEventRepository.save(outboxEvent); //сохраняем в события, что нужно отправить
-            log.info("Транзакцию {} добавлена в очередь на отправку", event.transactionNumber());
+            log.info("Транзакцию {} добавлена в очередь на отправку", transactionNumber);
 
         } catch (JsonProcessingException e) {
-            throw new RuntimeException("Упала сериализация транзакции: " + event.transactionNumber(), e);
+            throw new RuntimeException("Упала сериализация транзакции: " + transactionNumber, e);
         }
     }
 }
