@@ -33,7 +33,7 @@ public class CheckingService {
             return new CheckingResult(TransactionStatus.BLOCKED, Reason.R3);
         }
 
-        if (transactionCount.compareTo(15L) <= 0) {
+        if (transactionCount > 15) {
             blockedUser = new BlockedUser(owner);
             blockedUserRepository.save(blockedUser);
             return new CheckingResult(TransactionStatus.BLOCKED, Reason.R2);
