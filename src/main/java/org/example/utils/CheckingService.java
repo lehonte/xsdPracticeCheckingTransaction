@@ -8,6 +8,7 @@ import org.example.enums.Reason;
 import org.example.enums.TransactionStatus;
 import org.example.repositories.BlockedUserRepository;
 import org.example.repositories.SuccessfulTransactionRepository;
+import org.example.utils.email.EmailService;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +22,7 @@ public class CheckingService {
 
     private final SuccessfulTransactionRepository successfulTransactionRepository;
     private final BlockedUserRepository blockedUserRepository;
+    private final EmailService emailService;
 
     @Transactional(propagation = Propagation.REQUIRED)
     public CheckingResult checking(String email, String transactionNumber, BigDecimal amount, String owner) {
@@ -28,6 +30,8 @@ public class CheckingService {
         boolean isBlocked = blockedUserRepository.existsByOwner(owner);
         BlockedUser blockedUser;
         Long transactionCount = successfulTransactionRepository.countByOwnerAndProcessedAtGreaterThan(owner, LocalDateTime.now().minusHours(1));
+
+        emailService.sendSimpleEmailMessage(email, "lol", "loooool");
 
         if (isBlocked) {
             return new CheckingResult(TransactionStatus.BLOCKED, Reason.R3);
@@ -44,6 +48,8 @@ public class CheckingService {
             blockedUserRepository.save(blockedUser);
             return new CheckingResult(TransactionStatus.BLOCKED, Reason.R1);
         }
+
+
 
         SuccessfulTransaction successfulTransaction = new SuccessfulTransaction(transactionNumber, email, amount, owner);
         successfulTransactionRepository.save(successfulTransaction);
