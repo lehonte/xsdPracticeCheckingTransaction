@@ -23,7 +23,7 @@ public class CheckingService {
     private final BlockedUserRepository blockedUserRepository;
 
     @Transactional(propagation = Propagation.REQUIRED)
-    public CheckingResult checking(String phoneNumber, String transactionNumber, BigDecimal amount, String owner) {
+    public CheckingResult checking(String email, String transactionNumber, BigDecimal amount, String owner) {
 
         boolean isBlocked = blockedUserRepository.existsByOwner(owner);
         BlockedUser blockedUser;
@@ -45,7 +45,7 @@ public class CheckingService {
             return new CheckingResult(TransactionStatus.BLOCKED, Reason.R1);
         }
 
-        SuccessfulTransaction successfulTransaction = new SuccessfulTransaction(transactionNumber, phoneNumber, amount, owner);
+        SuccessfulTransaction successfulTransaction = new SuccessfulTransaction(transactionNumber, email, amount, owner);
         successfulTransactionRepository.save(successfulTransaction);
 
         return new CheckingResult(TransactionStatus.ACCEPTED, Reason.R0);

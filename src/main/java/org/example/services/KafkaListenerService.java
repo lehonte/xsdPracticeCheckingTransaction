@@ -41,7 +41,7 @@ public class KafkaListenerService {
 
     public void checkTransaction(CheckTransactionEvent event) {
 
-        String phoneNumber = event.getPhoneNumber();
+        String email = event.getEmail();
         String transactionNumber = event.getTransactionNumber();
         BigDecimal amount = event.getAmount();
         String owner = event.getOwner();
@@ -54,7 +54,7 @@ public class KafkaListenerService {
         producessedRequestsRepository.save(new ProducessedTransactions(transactionNumber));
 
         log.info("Транзакцию {} получена на обработку", transactionNumber);
-        CheckingResult result = checkingService.checking(phoneNumber, transactionNumber, amount, owner);
+        CheckingResult result = checkingService.checking(email, transactionNumber, amount, owner);
         log.info("Транзакцию {} обработали", transactionNumber);
         ResultOfChecking resultEvent = new ResultOfChecking(result.status(), transactionNumber, result.reason().getReason());
 

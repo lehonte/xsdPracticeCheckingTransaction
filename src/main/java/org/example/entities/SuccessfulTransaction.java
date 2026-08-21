@@ -21,8 +21,8 @@ public class SuccessfulTransaction {
     @Column(name = "transaction_number")
     private String transactionNumber;
 
-    @Column(name = "phone_number", nullable = false)
-    private String phoneNumber;
+    @Column(name = "email", nullable = false)
+    private String email;
 
     @Column(name = "amount")
     private BigDecimal amount;
@@ -33,9 +33,9 @@ public class SuccessfulTransaction {
     @Column(name = "processed_at")
     private LocalDateTime processedAt;
 
-    public SuccessfulTransaction(String transactionNumber, String phoneNumber, BigDecimal amount, String owner) {
+    public SuccessfulTransaction(String transactionNumber, String email, BigDecimal amount, String owner) {
         this.transactionNumber = transactionNumber;
-        this.phoneNumber = phoneNumber;
+        this.email = email;
         this.amount = amount;
         this.owner = owner;
         this.processedAt = LocalDateTime.now();
