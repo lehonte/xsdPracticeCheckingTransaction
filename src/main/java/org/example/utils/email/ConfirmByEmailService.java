@@ -36,14 +36,22 @@ public class ConfirmByEmailService {
         emailService.sendEmailMessage(code, email, transactionNumber, amount, owner);
     }
 
-    public boolean confirmCode(String transactionNumber, String codeConfirm) {
-        Object cache = redisTemplate.opsForValue().get(transactionNumber);
-        return codeConfirm.equals(cache);
-    }
-
     private String generateCode() {
         int code = 100000 + random.nextInt(900000);
         return String.valueOf(code);
     }
 
+    public DataToSend getPending(String transactionNumber) {
+        String json = redisTemplate.opsForValue().get(transactionNumber);
+        try {
+            if (json == null) throw new RuntimeException("Не удалось прочитать данные из кеша. Кеш пуст");
+            return objectMapper.readValue(json, DataToSend.class);
+        } catch (JsonProcessingException e) {
+            throw  new IllegalStateException("Не удалось прочитать данные подтверждения", e);
+        }
+    }
+
+    public boolean confirmCode(String codeConfirm, String code) {
+        return codeConfirm.equals(code);
+    }
 }

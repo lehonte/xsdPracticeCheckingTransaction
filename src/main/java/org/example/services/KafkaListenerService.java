@@ -50,7 +50,7 @@ public class KafkaListenerService {
         // Если не существует — сохраняем факт начала обработки
         producessedRequestsRepository.save(new ProducessedTransactions(transactionNumber));
 
-        log.info("Транзакцию {} получена на обработку", transactionNumber);
+        log.info("Транзакция {} получена на обработку", transactionNumber);
         CheckingResult result = checkingService.checking(email, transactionNumber, amount, owner);
         log.info("Транзакция {} прошла первичную обработку", transactionNumber);
 

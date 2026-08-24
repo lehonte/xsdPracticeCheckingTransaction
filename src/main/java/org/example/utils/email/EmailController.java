@@ -1,8 +1,5 @@
 package org.example.utils.email;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonMappingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.enums.CheckingResult;
@@ -10,14 +7,14 @@ import org.example.enums.Reason;
 import org.example.enums.TransactionStatus;
 import org.example.services.OutboxToSendService;
 import org.example.utils.CheckingService;
-import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 
 import java.math.BigDecimal;
-import java.util.Optional;
 
 @Controller
 @RequiredArgsConstructor
@@ -27,42 +24,36 @@ public class EmailController {
     private final ConfirmByEmailService confirmByEmailService;
     private final CheckingService checkingService;
     private final OutboxToSendService outboxToSendService;
-    private final RedisTemplate<String, String> redisTemplate;
-    private final ObjectMapper objectMapper;
 
     @PostMapping("/confirm-code")
-    public String handleFormSubmit(@RequestParam String codeConfirm,
-                                   @RequestParam String transactionNumber,
-                                   Model model) {
+    @ResponseBody
+    public ResponseEntity<String> handleFormSubmit(@RequestParam String codeConfirm,
+                                   @RequestParam String transactionNumber) {
         log.info("Получен код из формы: {}", codeConfirm);
-        if (codeConfirm != null) model.addAttribute("message", "Код получен");
-        else model.addAttribute("message", "Код не получен");
+        log.info("Получен номер транзакции из формы: {}", transactionNumber);
 
-
-        Optional<DataToSend> data = getPending(transactionNumber);
+        DataToSend data;
+        try {
+            data = confirmByEmailService.getPending(transactionNumber);
+        } catch (RuntimeException e) {
+            log.warn("Транзакция {} не найдена (срок действия истек или транзакции не существовало)", transactionNumber);
+            return ResponseEntity.badRequest().body("Транзакция не найдена или срок действия кода истек");
+        }
 
         CheckingResult result;
-        if (confirmByEmailService.confirmCode(codeConfirm, transactionNumber) && data.isPresent()) {
-
-
-            result = checkingService.saveResultOfChecking(email, transactionNumber, amount, owner);
+        if (codeConfirm != null && confirmByEmailService.confirmCode(codeConfirm, data.code())) {
+            log.info("Полученный код {} подтвержден", codeConfirm);
+            result = checkingService.saveResultOfChecking(data.email(), transactionNumber, data.amount(), data.owner());
             outboxToSendService.saveToSend(result, transactionNumber);
+            return ResponseEntity.ok("Транзакция успешно подтверждена");
         }
-        else if (data.isPresent()) {
+        else if (codeConfirm != null){
+            log.info("Полученный код {} неверный", codeConfirm);
             result = new CheckingResult(TransactionStatus.BLOCKED, Reason.R4);
             outboxToSendService.saveToSend(result, transactionNumber);
+            return ResponseEntity.ok("Неверный код подтверждения. Транзакция заблокирована");
         }
 
-        return "empty-page";
-    }
-
-    private Optional<DataToSend> getPending(String transactionNumber) {
-        String json = redisTemplate.opsForValue().get(transactionNumber);
-        if (json == null) return Optional.empty();
-        try {
-            return Optional.of(objectMapper.readValue(json, DataToSend.class));
-        } catch (JsonProcessingException e) {
-            throw  new IllegalStateException("Не удалось прочитать данные подтверждения", e);
-        }
+        return ResponseEntity.badRequest().body("Произошла ошибка при подтверждении");
     }
 }
