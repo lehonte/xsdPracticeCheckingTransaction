@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org" xmlns="http://www.w3.org/1999/html">
+<head>
+    <meta charset="utf8">
+    <title>Подтверждение транзакции</title>
+</head>
+<body style="margin:0; padding:0; background-color:#f1f1f1; font-family: sans-serif;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px; margin:0 auto; background:#fff;">
+        <tr>
+            <td style="padding: 2em; text-align:center;">
+                <h1 th:text="'Владельцу счета, ' + ${owner}"></h1>
+                <h2 th:text="'Транзакция '"></h2>
+                <h4 th:text="${transaction_number}"></h4>
+                <p>На вашем счете замечена активность</p>
+                <p th:text="'Перевод на сумму ' + ${amount}"></p>
+                <p>
+                    Чтобы подтвердить транзакцию, введите код
+                    <b th:text="${code}"></b>
+                    в поле ниже
+                </p>
+                <form th:action="'http://localhost:8070' + '/confirm-code'" method="POST">
+                    <input type="hidden" name="transactionNumber" th:value="${transaction_number}">
+                    <label>
+                        <input type="password" name="codeConfirm" placeholder="Введите ко для подтверждения">
+                    </label>
+                    <button type="submit">Отправить</button>
+                </form>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

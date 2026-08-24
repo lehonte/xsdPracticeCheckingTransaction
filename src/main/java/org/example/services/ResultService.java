@@ -68,6 +68,7 @@ public class ResultService {
         return switch (status) {
             case ACCEPTED -> TransactionStatusAvro.ACCEPTED;
             case BLOCKED -> TransactionStatusAvro.BLOCKED;
+            default -> throw new IllegalStateException("Неизвестный статус "+ status +" обработанной транзакции");
         };
     }
 }

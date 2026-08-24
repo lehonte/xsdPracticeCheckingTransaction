@@ -8,6 +8,7 @@ import org.example.enums.Reason;
 import org.example.enums.TransactionStatus;
 import org.example.repositories.BlockedUserRepository;
 import org.example.repositories.SuccessfulTransactionRepository;
+import org.example.utils.email.ConfirmByEmailService;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,9 +22,10 @@ public class CheckingService {
 
     private final SuccessfulTransactionRepository successfulTransactionRepository;
     private final BlockedUserRepository blockedUserRepository;
+    private final ConfirmByEmailService confirmByEmailService;
 
     @Transactional(propagation = Propagation.REQUIRED)
-    public CheckingResult checking(String phoneNumber, String transactionNumber, BigDecimal amount, String owner) {
+    public CheckingResult checking(String email, String transactionNumber, BigDecimal amount, String owner) {
 
         boolean isBlocked = blockedUserRepository.existsByOwner(owner);
         BlockedUser blockedUser;
@@ -45,9 +47,14 @@ public class CheckingService {
             return new CheckingResult(TransactionStatus.BLOCKED, Reason.R1);
         }
 
-        SuccessfulTransaction successfulTransaction = new SuccessfulTransaction(transactionNumber, phoneNumber, amount, owner);
-        successfulTransactionRepository.save(successfulTransaction);
+        confirmByEmailService.startConfirmation(email, transactionNumber, amount, owner);
 
+        return new CheckingResult(TransactionStatus.PENDING, Reason.R00);
+    }
+
+    public CheckingResult saveResultOfChecking(String email, String transactionNumber, BigDecimal amount, String owner) {
+        SuccessfulTransaction successfulTransaction = new SuccessfulTransaction(transactionNumber, email, amount, owner);
+        successfulTransactionRepository.save(successfulTransaction);
         return new CheckingResult(TransactionStatus.ACCEPTED, Reason.R0);
     }
 }

@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.dtoEvents.ResultOfChecking;
 import org.example.enums.CheckingResult;
+import org.example.enums.TransactionStatus;
 import org.example.eventEntities.OutboxEvent;
 import org.example.eventEntities.ProducessedTransactions;
 import org.example.events.CheckTransactionEvent;
@@ -25,23 +26,19 @@ public class KafkaListenerService {
 
     private final CheckingService checkingService;
     private final ProducessedRequestsRepository producessedRequestsRepository;
-    private final OutboxEventRepository outboxEventRepository;
-    private final ObjectMapper objectMapper;
     private final TransactionTemplate transactionTemplate;
+    private final OutboxToSendService outboxToSendService;
 
     @KafkaListener(topics = "check_transaction_topic")
-    public void liseningKafkaStrangeTransactions(CheckTransactionEvent event) {
+    public void listeningKafkaTransactions(CheckTransactionEvent event) {
         transactionTemplate.executeWithoutResult(status -> {
             checkTransaction(event);
         }); //это мы, чтобы не создавать отдельный бин для транзакции, обворачиваем метод который должен быть транзакцией
     }//в транзакцию и вызываем из слушателя чтобы сначала закоммитилась бд (или откат) а потом только офсет
     //иначе бд комитится после выхода из метода когда офсет уже отправлен и откат тогда будет для бд, а для кафки нет (для нее сообщение уже просмотрено и не отправится)
 
-
-
     public void checkTransaction(CheckTransactionEvent event) {
-
-        String phoneNumber = event.getPhoneNumber();
+        String email = event.getEmail();
         String transactionNumber = event.getTransactionNumber();
         BigDecimal amount = event.getAmount();
         String owner = event.getOwner();
@@ -53,25 +50,12 @@ public class KafkaListenerService {
         // Если не существует — сохраняем факт начала обработки
         producessedRequestsRepository.save(new ProducessedTransactions(transactionNumber));
 
-        log.info("Транзакцию {} получена на обработку", transactionNumber);
-        CheckingResult result = checkingService.checking(phoneNumber, transactionNumber, amount, owner);
-        log.info("Транзакцию {} обработали", transactionNumber);
-        ResultOfChecking resultEvent = new ResultOfChecking(result.status(), transactionNumber, result.reason().getReason());
+        log.info("Транзакция {} получена на обработку", transactionNumber);
+        CheckingResult result = checkingService.checking(email, transactionNumber, amount, owner);
+        log.info("Транзакция {} прошла первичную обработку", transactionNumber);
 
-        try {
-            String json = objectMapper.writeValueAsString(resultEvent);
-
-            OutboxEvent outboxEvent = new OutboxEvent(
-                    transactionNumber,
-                    "result_of_checking",
-                    json);
-
-            outboxEventRepository.save(outboxEvent); //сохраняем в события, что нужно отправить
-            log.info("Транзакцию {} добавлена в очередь на отправку", transactionNumber);
-
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException("Упала сериализация транзакции: " + transactionNumber, e);
-        }
+        if (result.status() == TransactionStatus.BLOCKED) outboxToSendService.saveToSend(result, transactionNumber);
     }
+
 }
 
